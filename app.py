@@ -42,6 +42,30 @@ with c3:
     </div>""", unsafe_allow_html=True)
 
 st.markdown('<hr class="gold-divider">', unsafe_allow_html=True)
+
+# 읽는 중인 책 섹션 — 책이 있을 때만 표시
+reading_books = [b for b in books if b.get("status") == "읽는중"]
+if reading_books:
+    st.markdown('<div style="color:#C9A84C; font-family:\'Noto Serif KR\',serif; font-size:1.1rem; font-weight:600; margin-bottom:1rem;">읽는 중인 책</div>', unsafe_allow_html=True)
+    r_cols = st.columns(3)
+    for i, book in enumerate(reading_books):
+        with r_cols[i % 3]:
+            cover = book.get("cover_url", "")
+            cover_html = f'<img src="{cover}" style="width:60px;height:80px;object-fit:cover;border-radius:4px;margin-right:0.8rem;float:left;">' if cover else '<div style="width:60px;height:80px;background:#152B50;border-radius:4px;margin-right:0.8rem;float:left;display:flex;align-items:center;justify-content:center;color:#C9A84C;font-size:1.5rem;">📖</div>'
+            location_html = f'<span class="book-location">📍 {book["location"]}</span>' if book.get("location") else ""
+            st.markdown(f"""
+            <div class="book-card" style="overflow:hidden;">
+                {cover_html}
+                <div class="book-title" style="margin-left:68px;">{book['title']} <span style="color:#C9A84C;font-size:0.8rem;">🟡 읽는중</span></div>
+                <div class="book-meta" style="margin-left:68px;">
+                    {book.get('author','저자 미상')}<br>
+                    {book.get('publisher','')}
+                </div>
+                {location_html}
+                <div style="clear:both;"></div>
+            </div>""", unsafe_allow_html=True)
+    st.markdown('<hr class="gold-divider">', unsafe_allow_html=True)
+
 st.markdown('<div style="color:#C9A84C; font-family:\'Noto Serif KR\',serif; font-size:1.1rem; font-weight:600; margin-bottom:1rem;">최근 추가된 책</div>', unsafe_allow_html=True)
 
 recent = books[:6]

@@ -1,7 +1,7 @@
 import streamlit as st
 from components.styles import apply_global_styles, sidebar_logo, page_header
 from utils.vision_api import extract_books_from_image
-from utils.book_api import lookup_book
+from utils.book_api import lookup_book, search_by_isbn
 from utils.database import add_book, init_db
 
 st.set_page_config(page_title="책 추가 | 연서테카", page_icon="📸", layout="wide")
@@ -212,11 +212,27 @@ with tab1:
 with tab2:
     st.markdown("#### 책 정보 직접 입력")
 
+    # ISBN 입력 필드를 제목 위에 배치 — 13자리 완성 시 자동 조회
+    m_isbn_input = st.text_input("ISBN (13자리 입력 시 자동 조회)", placeholder="9791234567890", key="m_isbn_input")
+    isbn_clean = m_isbn_input.replace("-", "").strip()
+    if len(isbn_clean) == 13 and isbn_clean.isdigit():
+        if st.session_state.get("_last_isbn_query") != isbn_clean:
+            st.session_state["_last_isbn_query"] = isbn_clean
+            with st.spinner("ISBN으로 조회 중..."):
+                isbn_result = search_by_isbn(isbn_clean)
+            if isbn_result:
+                st.success(f"✅ ISBN 조회 성공! ({isbn_result.get('title', '')})")
+                st.session_state["manual_info"] = isbn_result
+            else:
+                st.warning("ISBN 조회 결과가 없습니다. 제목으로 검색하거나 직접 입력하세요.")
+
+    info = st.session_state.get("manual_info", {})
+
     c1, c2 = st.columns(2)
     with c1:
-        m_title = st.text_input("제목 *", placeholder="책 제목을 입력하세요")
+        m_title = st.text_input("제목 *", placeholder="책 제목을 입력하세요", value=info.get("title", ""))
     with c2:
-        m_author = st.text_input("저자", placeholder="저자명")
+        m_author = st.text_input("저자", placeholder="저자명", value=info.get("author", ""))
 
     if m_title and st.button("🔍 네이버에서 정보 자동 조회"):
         with st.spinner("조회 중..."):
@@ -233,7 +249,7 @@ with tab2:
     c3, c4 = st.columns(2)
     with c3:
         m_translator = st.text_input("번역가", value=info.get("translator", ""))
-        m_isbn = st.text_input("ISBN", value=info.get("isbn", ""))
+        m_isbn = st.text_input("ISBN", value=info.get("isbn", isbn_clean if len(isbn_clean) == 13 else ""))
         m_location = st.text_input("위치 *", placeholder="라운지-1-3")
     with c4:
         m_publisher = st.text_input("출판사", value=info.get("publisher", ""))

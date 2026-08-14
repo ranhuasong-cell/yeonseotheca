@@ -19,8 +19,28 @@ with col_loc:
     loc_options = ["전체 위치"] + locations
     loc_filter = st.selectbox("위치 필터", loc_options, label_visibility="collapsed")
 
+# 독서 상태 · 별점 필터 (검색바 아래 한 row)
+fcol_status, fcol_rating, fcol_empty = st.columns([2, 2, 3])
+with fcol_status:
+    status_filter = st.selectbox(
+        "독서 상태",
+        ["전체", "읽고싶음", "읽는중", "읽음"],
+        label_visibility="collapsed",
+    )
+with fcol_rating:
+    rating_options = ["전체", "★ 1점 이상", "★★ 2점 이상", "★★★ 3점 이상", "★★★★ 4점 이상", "★★★★★ 5점"]
+    rating_filter = st.selectbox("별점 필터", rating_options, label_visibility="collapsed")
+
 selected_location = "" if loc_filter == "전체 위치" else loc_filter
 results = search_books(query, selected_location)
+
+# Python 레벨 필터링 — 상태/별점
+if status_filter != "전체":
+    results = [b for b in results if (b.get("status") or "읽고싶음") == status_filter]
+
+if rating_filter != "전체":
+    min_rating = rating_options.index(rating_filter)  # "★ 1점 이상" → index 1
+    results = [b for b in results if b.get("rating") and int(b["rating"]) >= min_rating]
 
 st.markdown(f'<div style="color:#8A9BB5; font-size:0.85rem; margin-bottom:1rem;">검색 결과: <span style="color:#C9A84C; font-weight:600;">{len(results)}권</span></div>', unsafe_allow_html=True)
 

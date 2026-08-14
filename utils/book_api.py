@@ -93,6 +93,37 @@ def _search_naver_raw(query: str):
         return None
 
 
+def search_by_isbn(isbn: str) -> dict | None:
+    """네이버 책 검색 API의 d_isbn 파라미터로 ISBN 13자리 조회."""
+    clean = isbn.replace("-", "").strip()
+    if len(clean) != 13 or not clean.isdigit():
+        return None
+    url = "https://openapi.naver.com/v1/search/book.json"
+    headers = {
+        "X-Naver-Client-Id": NAVER_CLIENT_ID,
+        "X-Naver-Client-Secret": NAVER_CLIENT_SECRET,
+    }
+    try:
+        res = requests.get(url, headers=headers,
+                           params={"d_isbn": clean, "display": 1}, timeout=5)
+        res.raise_for_status()
+        items = res.json().get("items", [])
+        if not items:
+            return None
+        item = items[0]
+        return {
+            "title": _clean_html(item.get("title", "")),
+            "author": _clean_html(item.get("author", "")),
+            "publisher": item.get("publisher", ""),
+            "isbn": item.get("isbn", "").split()[-1] if item.get("isbn") else clean,
+            "cover_url": item.get("image", ""),
+            "description": _clean_html(item.get("description", "")),
+            "source": "naver",
+        }
+    except Exception:
+        return None
+
+
 def search_naver_book(title: str, author: str = "", publisher: str = ""):
     """최적화된 쿼리 후보를 순차 시도해 네이버에서 책을 조회합니다."""
     queries = _normalize_queries(title, author, publisher)
