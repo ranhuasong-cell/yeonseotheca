@@ -3,12 +3,10 @@ import os
 import json
 import requests
 from openai import OpenAI
-from dotenv import load_dotenv
+from utils.secrets import get_secret
 
-load_dotenv()
-
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-GOOGLE_VISION_KEY = os.getenv("GOOGLE_VISION_API_KEY", "")
+client = OpenAI(api_key=get_secret("OPENAI_API_KEY"))
+GOOGLE_VISION_KEY = get_secret("GOOGLE_VISION_API_KEY")
 
 # ── Google Cloud Vision OCR ─────────────────────────────────────
 

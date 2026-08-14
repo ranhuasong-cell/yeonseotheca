@@ -3,15 +3,13 @@ import re
 import json
 import requests
 from openai import OpenAI
-from dotenv import load_dotenv
+from utils.secrets import get_secret
 
-load_dotenv()
+NAVER_CLIENT_ID = get_secret("NAVER_CLIENT_ID")
+NAVER_CLIENT_SECRET = get_secret("NAVER_CLIENT_SECRET")
+GOOGLE_BOOKS_API_KEY = get_secret("GOOGLE_BOOKS_API_KEY")
 
-NAVER_CLIENT_ID = os.getenv("NAVER_CLIENT_ID")
-NAVER_CLIENT_SECRET = os.getenv("NAVER_CLIENT_SECRET")
-GOOGLE_BOOKS_API_KEY = os.getenv("GOOGLE_BOOKS_API_KEY")
-
-_openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+_openai_client = OpenAI(api_key=get_secret("OPENAI_API_KEY"))
 
 
 def _clean_html(text: str) -> str:
@@ -93,7 +91,7 @@ def _search_naver_raw(query: str):
         return None
 
 
-def search_by_isbn(isbn: str) -> dict | None:
+def search_by_isbn(isbn: str):
     """네이버 책 검색 API의 d_isbn 파라미터로 ISBN 13자리 조회."""
     clean = isbn.replace("-", "").strip()
     if len(clean) != 13 or not clean.isdigit():
