@@ -44,21 +44,42 @@ else:
                     tags = [f'<span style="background:#1A3355;color:#8A9BB5;border-radius:4px;padding:0.1rem 0.4rem;font-size:0.75rem;margin-right:0.3rem;">{k.strip()}</span>' for k in book["keywords"].split(",") if k.strip()]
                     kw_html = " ".join(tags)
 
+                status = book.get("status") or "읽고싶음"
+                status_badge = {"읽음": "🟢", "읽는중": "🟡", "읽고싶음": "🔵"}.get(status, "🔵")
+                status_html = (f'<span style="font-size:0.8rem;padding:0.1rem 0.5rem;border-radius:10px;'
+                               f'background:#1A3355;color:#E8E0D0;margin-left:0.4rem;">'
+                               f'{status_badge} {status}</span>')
+
+                rating = book.get("rating")
+                rating_html = ""
+                if rating:
+                    stars = "★" * int(rating) + "☆" * (5 - int(rating))
+                    rating_html = f'<span style="color:#C9A84C;font-size:0.85rem;margin-left:0.6rem;">{stars}</span>'
+
+                review_html = ""
+                if book.get("review"):
+                    review_html = f'<br><span style="color:#8A9BB5;font-size:0.82rem;font-style:italic;">&ldquo;{book["review"]}&rdquo;</span>'
+
                 st.markdown(f"""
                 <div class="book-card">
-                    <div class="book-title">{book['title']}</div>
+                    <div class="book-title">{book['title']}{status_html}{rating_html}</div>
                     <div class="book-meta">
                         저자: {book.get('author') or '—'} &nbsp;|&nbsp;
                         번역: {book.get('translator') or '—'} &nbsp;|&nbsp;
                         출판사: {book.get('publisher') or '—'}
                         {f"<br>ISBN: {book['isbn']}" if book.get('isbn') else ""}
                         {f"<br>메모: {book['memo']}" if book.get('memo') else ""}
+                        {review_html}
                     </div>
                     <div style="margin-top:0.5rem;">{loc_html} &nbsp; {kw_html}</div>
                 </div>""", unsafe_allow_html=True)
 
             with col_actions:
                 st.markdown("<div style='padding-top:0.5rem;'>", unsafe_allow_html=True)
+
+                if st.button("📖 상세", key=f"detail_{book['id']}"):
+                    st.session_state["detail_book_id"] = book["id"]
+                    st.switch_page("pages/4_📖_상세.py")
 
                 if st.button("✏️ 수정", key=f"edit_{book['id']}"):
                     st.session_state[f"editing_{book['id']}"] = True
@@ -93,6 +114,22 @@ else:
                     new_keywords = st.text_input("키워드", value=book.get("keywords", ""))
                 new_memo = st.text_area("메모", value=book.get("memo", ""))
 
+                frc1, frc2, frc3 = st.columns(3)
+                with frc1:
+                    status_options = ["읽고싶음", "읽는중", "읽음"]
+                    current_status = book.get("status") or "읽고싶음"
+                    status_idx = status_options.index(current_status) if current_status in status_options else 0
+                    new_status = st.selectbox("독서 상태", status_options, index=status_idx)
+                with frc2:
+                    rating_options = [None, 1, 2, 3, 4, 5]
+                    rating_labels = ["미평가", "★ 1", "★★ 2", "★★★ 3", "★★★★ 4", "★★★★★ 5"]
+                    current_rating = book.get("rating")
+                    rating_idx = rating_options.index(current_rating) if current_rating in rating_options else 0
+                    new_rating_label = st.selectbox("별점", rating_labels, index=rating_idx)
+                    new_rating = rating_options[rating_labels.index(new_rating_label)]
+                with frc3:
+                    new_review = st.text_area("한줄 리뷰", value=book.get("review") or "", height=80)
+
                 save_col, cancel_col = st.columns(2)
                 with save_col:
                     submitted = st.form_submit_button("💾 저장")
@@ -102,7 +139,8 @@ else:
                 if submitted:
                     update_book(book["id"], title=new_title, author=new_author,
                                 translator=new_translator, publisher=new_publisher,
-                                location=new_location, keywords=new_keywords, memo=new_memo)
+                                location=new_location, keywords=new_keywords, memo=new_memo,
+                                status=new_status, rating=new_rating, review=new_review)
                     st.session_state[f"editing_{book['id']}"] = False
                     st.success("수정 완료!")
                     st.rerun()

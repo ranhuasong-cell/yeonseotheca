@@ -63,18 +63,28 @@ def init_db():
         END
     """)
 
+    # 기존 DB에 컬럼이 없을 때만 추가 (마이그레이션)
+    existing_cols = {row[1] for row in c.execute("PRAGMA table_info(books)").fetchall()}
+    if "status" not in existing_cols:
+        c.execute("ALTER TABLE books ADD COLUMN status TEXT DEFAULT '읽고싶음'")
+    if "rating" not in existing_cols:
+        c.execute("ALTER TABLE books ADD COLUMN rating INTEGER DEFAULT NULL")
+    if "review" not in existing_cols:
+        c.execute("ALTER TABLE books ADD COLUMN review TEXT DEFAULT ''")
+
     conn.commit()
     conn.close()
 
 
 def add_book(title, author="", translator="", publisher="", isbn="",
-             cover_url="", location="", keywords="", memo=""):
+             cover_url="", location="", keywords="", memo="",
+             status="읽고싶음", rating=None, review=""):
     conn = get_connection()
     c = conn.cursor()
     c.execute("""
-        INSERT INTO books (title, author, translator, publisher, isbn, cover_url, location, keywords, memo)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, (title, author, translator, publisher, isbn, cover_url, location, keywords, memo))
+        INSERT INTO books (title, author, translator, publisher, isbn, cover_url, location, keywords, memo, status, rating, review)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (title, author, translator, publisher, isbn, cover_url, location, keywords, memo, status, rating, review))
     book_id = c.lastrowid
     conn.commit()
     conn.close()
@@ -83,7 +93,8 @@ def add_book(title, author="", translator="", publisher="", isbn="",
 
 def update_book(book_id, **fields):
     allowed = {"title", "author", "translator", "publisher", "isbn",
-               "cover_url", "location", "keywords", "memo"}
+               "cover_url", "location", "keywords", "memo",
+               "status", "rating", "review"}
     updates = {k: v for k, v in fields.items() if k in allowed}
     if not updates:
         return
@@ -101,6 +112,15 @@ def delete_book(book_id):
     conn.execute("DELETE FROM books WHERE id = ?", (book_id,))
     conn.commit()
     conn.close()
+
+
+def get_book_by_id(book_id: int) -> dict | None:
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute("SELECT * FROM books WHERE id = ?", (book_id,))
+    row = c.fetchone()
+    conn.close()
+    return dict(row) if row else None
 
 
 def search_books(query="", location_filter=""):
@@ -139,9 +159,14 @@ def get_stats():
     c = conn.cursor()
     c.execute("SELECT COUNT(*) as total FROM books")
     total = c.fetchone()["total"]
+    c.execute("SELECT COUNT(*) as cnt FROM books WHERE status = '읽음'")
+    read_count = c.fetchone()["cnt"]
     c.execute("SELECT location, COUNT(*) as cnt FROM books WHERE location != '' GROUP BY location ORDER BY cnt DESC")
     by_location = [dict(r) for r in c.fetchall()]
     c.execute("SELECT publisher, COUNT(*) as cnt FROM books WHERE publisher != '' GROUP BY publisher ORDER BY cnt DESC LIMIT 10")
     by_publisher = [dict(r) for r in c.fetchall()]
+    c.execute("SELECT status, COUNT(*) as cnt FROM books GROUP BY status")
+    by_status = [dict(r) for r in c.fetchall()]
     conn.close()
-    return {"total": total, "by_location": by_location, "by_publisher": by_publisher}
+    return {"total": total, "read_count": read_count, "by_location": by_location,
+            "by_publisher": by_publisher, "by_status": by_status}

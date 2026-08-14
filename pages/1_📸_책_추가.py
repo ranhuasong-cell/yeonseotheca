@@ -108,6 +108,7 @@ with tab1:
                             location=st.session_state.get(f"loc_{i}", "") or bulk_location,
                             keywords=st.session_state.get(f"kw_{i}", ""),
                             memo=st.session_state.get(f"memo_{i}", ""),
+                            status=st.session_state.get(f"status_{i}", "읽고싶음"),
                         )
                         saved += 1
                     st.success(f"✅ {saved}권 저장 완료!" + (f" ({skipped}권 제목 없어 건너뜀)" if skipped else ""))
@@ -142,7 +143,8 @@ with tab1:
                                 add_book(title=book.get("title",""), author=book.get("author",""),
                                          publisher=book.get("publisher",""),
                                          cover_url=book.get("cover_url",""),
-                                         location=st.session_state.get("bulk_location",""))
+                                         location=st.session_state.get("bulk_location",""),
+                                         status="읽고싶음")
                                 st.success(f"저장됨: {book.get('title','')}")
 
             if confirmed:
@@ -189,6 +191,11 @@ with tab1:
                             location = st.text_input("위치 개별 설정", value="", key=f"loc_{i}", placeholder="비워두면 일괄 위치 적용")
                         keywords = st.text_input("키워드 (쉼표로 구분)", value="", key=f"kw_{i}", placeholder="소설, 한국문학, 부커상")
                         memo = st.text_area("메모", value="", key=f"memo_{i}", height=80)
+                        status = st.selectbox(
+                            "독서 상태",
+                            ["읽고싶음", "읽는중", "읽음"],
+                            key=f"status_{i}"
+                        )
 
                         if st.button(f"💾 이 책만 저장", key=f"save_{i}"):
                             add_book(
@@ -196,7 +203,8 @@ with tab1:
                                 publisher=publisher, isbn=isbn,
                                 cover_url=book.get("cover_url", ""),
                                 location=location or bulk_location,
-                                keywords=keywords, memo=memo
+                                keywords=keywords, memo=memo,
+                                status=status,
                             )
                             st.success(f"✅ '{title}' 저장 완료!")
 
@@ -233,6 +241,7 @@ with tab2:
         m_keywords = st.text_input("키워드 (쉼표 구분)", placeholder="소설, 추천")
 
     m_memo = st.text_area("메모", height=80)
+    m_status = st.selectbox("독서 상태", ["읽고싶음", "읽는중", "읽음"], key="m_status")
 
     if info.get("cover_url"):
         st.image(info["cover_url"], width=80)
@@ -245,7 +254,8 @@ with tab2:
                 title=m_title, author=m_author, translator=m_translator,
                 publisher=m_publisher, isbn=m_isbn,
                 cover_url=m_cover, location=m_location,
-                keywords=m_keywords, memo=m_memo
+                keywords=m_keywords, memo=m_memo,
+                status=m_status,
             )
             st.success(f"✅ '{m_title}' 저장 완료!")
             st.session_state["manual_info"] = {}

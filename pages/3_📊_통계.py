@@ -2,6 +2,7 @@ import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
+from datetime import datetime
 from components.styles import apply_global_styles, sidebar_logo, page_header
 from utils.database import get_stats, get_all_books, init_db
 
@@ -27,16 +28,18 @@ if not books:
     st.stop()
 
 # 상단 요약 수치
-c1, c2, c3, c4 = st.columns(4)
+c1, c2, c3, c4, c5 = st.columns(5)
 authors = set(b["author"] for b in books if b.get("author"))
 publishers = set(b["publisher"] for b in books if b.get("publisher"))
 with c1:
     st.markdown(f'<div class="stat-card"><div class="stat-number">{stats["total"]}</div><div class="stat-label">전체 도서</div></div>', unsafe_allow_html=True)
 with c2:
-    st.markdown(f'<div class="stat-card"><div class="stat-number">{len(authors)}</div><div class="stat-label">저자 수</div></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="stat-card"><div class="stat-number">{stats["read_count"]}</div><div class="stat-label">읽은 책</div></div>', unsafe_allow_html=True)
 with c3:
-    st.markdown(f'<div class="stat-card"><div class="stat-number">{len(publishers)}</div><div class="stat-label">출판사 수</div></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="stat-card"><div class="stat-number">{len(authors)}</div><div class="stat-label">저자 수</div></div>', unsafe_allow_html=True)
 with c4:
+    st.markdown(f'<div class="stat-card"><div class="stat-number">{len(publishers)}</div><div class="stat-label">출판사 수</div></div>', unsafe_allow_html=True)
+with c5:
     st.markdown(f'<div class="stat-card"><div class="stat-number">{len(stats["by_location"])}</div><div class="stat-label">서재 위치</div></div>', unsafe_allow_html=True)
 
 st.markdown('<hr class="gold-divider">', unsafe_allow_html=True)
@@ -86,6 +89,40 @@ with col_right:
 
 st.markdown('<hr class="gold-divider">', unsafe_allow_html=True)
 
+# 독서 상태 파이차트
+st.markdown('<div style="color:#C9A84C; font-weight:600; margin-bottom:0.8rem;">📚 독서 상태별 분포</div>', unsafe_allow_html=True)
+if stats["by_status"]:
+    STATUS_COLORS = {"읽음": "#4CAF50", "읽는중": "#C9A84C", "읽고싶음": "#4A7ABF"}
+    # DB에 저장된 상태 외에 누락된 상태도 0으로 채워 항상 3가지 표시
+    status_map = {row["status"]: row["cnt"] for row in stats["by_status"] if row["status"]}
+    all_statuses = ["읽음", "읽는중", "읽고싶음"]
+    df_status = pd.DataFrame([
+        {"status": s, "cnt": status_map.get(s, 0)} for s in all_statuses if status_map.get(s, 0) > 0
+    ])
+    if not df_status.empty:
+        fig_status = px.pie(
+            df_status, values="cnt", names="status",
+            color="status",
+            color_discrete_map=STATUS_COLORS,
+            hole=0.45,
+        )
+        fig_status.update_layout(
+            paper_bgcolor=NAVY2, plot_bgcolor=NAVY2,
+            font_color=TEXT, margin=dict(l=0, r=0, t=10, b=0),
+            legend=dict(font=dict(color=MUTED), bgcolor=NAVY2),
+            height=280,
+        )
+        fig_status.update_traces(textfont_color=TEXT)
+        col_status, col_status_pad = st.columns([1, 1])
+        with col_status:
+            st.plotly_chart(fig_status, use_container_width=True)
+    else:
+        st.caption("독서 상태 데이터가 없습니다")
+else:
+    st.caption("독서 상태 데이터가 없습니다")
+
+st.markdown('<hr class="gold-divider">', unsafe_allow_html=True)
+
 # 월별 추가 추이
 st.markdown('<div style="color:#C9A84C; font-weight:600; margin-bottom:0.8rem;">📅 월별 도서 추가 추이</div>', unsafe_allow_html=True)
 df = pd.DataFrame(books)
@@ -114,7 +151,21 @@ st.plotly_chart(fig3, use_container_width=True)
 # 전체 도서 목록 테이블
 st.markdown('<hr class="gold-divider">', unsafe_allow_html=True)
 st.markdown('<div style="color:#C9A84C; font-weight:600; margin-bottom:0.8rem;">📋 전체 도서 목록</div>', unsafe_allow_html=True)
-df_show = df[["title", "author", "translator", "publisher", "location", "isbn", "added_at"]].copy()
-df_show.columns = ["제목", "저자", "번역가", "출판사", "위치", "ISBN", "추가일"]
+show_cols = ["title", "author", "translator", "publisher", "location", "status", "rating", "review", "isbn", "added_at"]
+# status/rating/review가 없는 구버전 데이터 대비 안전하게 처리
+for col in ["status", "rating", "review"]:
+    if col not in df.columns:
+        df[col] = None
+df_show = df[show_cols].copy()
+df_show.columns = ["제목", "저자", "번역가", "출판사", "위치", "독서상태", "별점", "한줄리뷰", "ISBN", "추가일"]
 df_show["추가일"] = df_show["추가일"].dt.strftime("%Y-%m-%d")
 st.dataframe(df_show, use_container_width=True, hide_index=True)
+
+csv = df_show.to_csv(index=False, encoding="utf-8-sig")
+st.download_button(
+    label="📥 전체 목록 CSV 다운로드",
+    data=csv,
+    file_name=f"연서테카_{datetime.now().strftime('%Y%m%d')}.csv",
+    mime="text/csv",
+    use_container_width=True,
+)
